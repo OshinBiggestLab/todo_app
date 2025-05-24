@@ -3,3 +3,19 @@
 @import "tailwindcss/utilities";
 
 /* This file is for your main application CSS */
+
+@layer utilities {
+  .completed_todo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 100%;
+    background: linear-gradient(hsl(192, 100%, 67%), transparent),
+      linear-gradient(to top right, hsl(220, 98%, 61%), transparent),
+      linear-gradient(to top left, hsl(280, 87%, 65%), transparent);
+    background-blend-mode: screen;
+  }
+}

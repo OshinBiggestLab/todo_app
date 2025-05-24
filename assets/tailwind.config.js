@@ -25,6 +25,7 @@ module.exports = {
         // 0 = dark
         // 00 = very dark
         // gb = grayish_blue
+        // h = hover
 
         // Primary
         brightBlue: "hsl(220, 98%, 61%)",

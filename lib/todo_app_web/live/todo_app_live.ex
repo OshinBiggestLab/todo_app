@@ -5,21 +5,44 @@ defmodule TodoAppWeb.TodoAppLive do
   def mount(_params, _session, socket) do
     dbg("mount debgging")
     todos = GenServer.call(:todos, :get_todos)
-    {:ok, assign(socket, input: "", todos: todos)}
+
+    completed_todos = Enum.filter(todos, fn %{is_completed: is_completed} -> is_completed == true end)
+    incomplete_todos = Enum.filter(todos, fn %{is_completed: is_completed} -> is_completed == false end)
+
+    {:ok, assign(socket, input: "", todos: todos, completed_todos: completed_todos, incomplete_todos: incomplete_todos, is_clicked: false, show_all: false, show_completed: false, show_incomplete: false)}
   end
 
-  # def handle_event("update_input", %{"user_input" => val}, socket) do
-  #   # IO.puts("User typed: #{val}")
-  #   {:noreply, assign(socket, input: val)}
-  # end
+def handle_event("enter_pressed", %{"user_input" => value}, socket) do
+  todo = String.trim(value)
+  IO.inspect(todo, label: "Check todo")
 
-  def handle_event("enter_pressed", %{"key" => "Enter", "value" => value }, socket) do
-    TodoApp.TodoServer.add_todo(value)
+  if todo != "" do
+    TodoApp.TodoServer.add_todo(todo)
     todos = TodoApp.TodoServer.todos()
     {:noreply, assign(socket, input: "", todos: todos)}
-  end
-  def handle_event("enter_pressed", _param, socket) do
+  else
+    IO.puts("Empty input, not adding todo")
     {:noreply, socket}
+  end
+end
+
+def handle_event("update_input", %{"user_input" => val}, socket) do
+  {:noreply, assign(socket, input: val)}
+end
+
+  def handle_event("show_todos", _param, socket) do
+    update_show_all = not socket.assigns.show_all
+    {:noreply, assign(socket, show_all: update_show_all, show_completed: false, show_incomplete: false)}
+  end
+
+  def handle_event("show_completed", _param, socket) do
+    update_show_completed = not socket.assigns.show_completed
+    {:noreply, assign(socket, show_completed: update_show_completed, show_all: false, show_incomplete: false)}
+  end
+
+  def handle_event("show_incomplete", _param, socket) do
+    update_show_incomplete = not socket.assigns.show_incomplete
+    {:noreply, assign(socket, show_incomplete: update_show_incomplete, show_all: false, show_completed: false)}
   end
 
   @spec render(any()) :: Phoenix.LiveView.Rendered.t()
@@ -34,27 +57,45 @@ defmodule TodoAppWeb.TodoAppLive do
       <div>
       <section class="bg-desaturated_blue00 my-6 flex h-16 items-center gap-x-5 p-5 rounded-md">
        <div class="w-7 h-7 border border-gb_0 rounded-full"></div>
-        <input class="bg-desaturated_blue00 text-light_grayish_blue text-lg w-full h-full border-none focus:outline-none focus:ring-0 focus:border-none" placeholder="Create a new todo..." type="text" name="user_input" value={@input}    phx-keydown="enter_pressed"/>
+      <form phx-submit="enter_pressed" class="w-full">
+        <input
+          class="bg-desaturated_blue00 placeholder-gb_1 text-lg w-full h-full border-none focus:outline-none focus:ring-0 focus:border-none"
+          placeholder="Create a new todo..."
+          type="text"
+          name="user_input"
+          value={@input}
+          phx-change="update_input"
+          autocomplete="off"/>
+          </form>
       </section>
       <section class="bg-desaturated_blue00 rounded-md">
         <ul>
         <%=  for todo <-@todos do %>
         <li class=" flex items-center border-b h-16 border-gb_001 p-5 gap-x-6">
         <%!-- todo.status === "completed" ? <div id="completed_todo"> :  <div id="incomplete_todo"> --%>
-          <div class="completed_todo">
+        <%= if todo.is_completed == false do %>
+       <%!-- <%= if String.downcase(todo.is_completed) == "incomplete" do %> --%>
+           <button class="completed_todo">
             <div class="bg-desaturated_blue00 rounded-full w-[26px] h-[26px]"></div>
-          </div>
-          <h1 class="text-light_grayish_blue text-lg"><%= todo.todo %></h1>
+          </button>
+           <h1 class="text-light_grayish_blue text-lg "><%= todo.todo %></h1>
+        <% else %>
+          <div class="completed_todo"></div>
+          <h1 class="text-gb_001 text-lg line-through"><%= todo.todo %></h1>
+        <% end %>
+
           <div class="ml-auto">X</div>
         </li>
         <% end %>
         </ul>
         <div class="text-gb_02 flex justify-between items-center p-5">
-        <p class="text-sm"> <%= length(@todos) %>  <span>items left</span></p>
+        <p class="text-sm">
+          <%= length(@todos) %> <span><%= if length(@todos) > 1, do: "items", else: "item" %> left</span>
+        </p>
         <div class="flex gap-x-5 font-medium">
-        <button class="hover:text-white">All</button>
-        <button class="hover:text-white">Active</button>
-        <button class="hover:text-white">Completed</button>
+        <button class={"hover:text-white" <> if @show_all, do: " text-brightBlue", else: ""} phx-click="show_todos">All</button>
+        <button class={"hover:text-white" <> if @show_completed, do: " text-brightBlue", else: ""} phx-click="show_completed">Active</button>
+        <button class={"hover:text-white" <> if @show_incomplete, do: " text-brightBlue", else: ""} phx-click="show_incomplete">Completed</button>
         </div>
           <button class="hover:text-white">Clear completed</button>
        </div>

@@ -12,23 +12,23 @@ defmodule TodoAppWeb.TodoAppLive do
     {:ok, assign(socket, input: "", todos: todos, completed_todos: completed_todos, incomplete_todos: incomplete_todos, is_clicked: false, show_all: false, show_completed: false, show_incomplete: false)}
   end
 
-def handle_event("enter_pressed", %{"user_input" => value}, socket) do
-  todo = String.trim(value)
-  IO.inspect(todo, label: "Check todo")
+  def handle_event("enter_pressed", %{"user_input" => value}, socket) do
+    todo = String.trim(value)
+    IO.inspect(todo, label: "Check todo")
 
-  if todo != "" do
-    TodoApp.TodoServer.add_todo(todo)
-    todos = TodoApp.TodoServer.todos()
-    {:noreply, assign(socket, input: "", todos: todos)}
-  else
-    IO.puts("Empty input, not adding todo")
-    {:noreply, socket}
+    if todo != "" do
+      TodoApp.TodoServer.add_todo(todo)
+      todos = TodoApp.TodoServer.todos()
+      {:noreply, assign(socket, input: "", todos: todos)}
+    else
+      IO.puts("Empty input, not adding todo")
+      {:noreply, socket}
+    end
   end
-end
 
-def handle_event("update_input", %{"user_input" => val}, socket) do
-  {:noreply, assign(socket, input: val)}
-end
+  def handle_event("update_input", %{"user_input" => val}, socket) do
+    {:noreply, assign(socket, input: val)}
+  end
 
   def handle_event("show_todos", _param, socket) do
     update_show_all = not socket.assigns.show_all
@@ -44,6 +44,32 @@ end
     update_show_incomplete = not socket.assigns.show_incomplete
     {:noreply, assign(socket, show_incomplete: update_show_incomplete, show_all: false, show_completed: false)}
   end
+
+  def handle_event("toggle_todo", %{"id" => id}, socket) do
+    id = String.to_integer(id)
+    TodoApp.TodoServer.toggle_completed(id)
+    todos = TodoApp.TodoServer.todos()
+
+   {:noreply, assign(socket, todos: todos)}
+  end
+
+  def handle_event("delete_todo", %{"id" => id}, socket) do
+    id = String.to_integer(id)
+
+    # Calls the delete_todo function in the TodoServer
+    TodoApp.TodoServer.delete_todo(id)
+    # After deleting the todo, fetch the updated list of todos
+    todos = TodoApp.TodoServer.todos()
+    {:noreply, assign(socket, todos: todos)}
+  end
+
+  def handle_event("clear_completed", _params, socket) do
+    # Calls the delete_completed function in the TodoServer
+    TodoApp.TodoServer.delete_completed()
+    todos = TodoApp.TodoServer.todos()
+    {:noreply, assign(socket, todos: todos)}
+  end
+
 
   @spec render(any()) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
@@ -73,18 +99,24 @@ end
         <%=  for todo <-@todos do %>
         <li class=" flex items-center border-b h-16 border-gb_001 p-5 gap-x-6">
         <%!-- todo.status === "completed" ? <div id="completed_todo"> :  <div id="incomplete_todo"> --%>
+           <button
+             class="completed_todo"
+             phx-click="toggle_todo"
+             phx-value-id={todo.id}>
+          <%= if todo.is_completed == false do %><div class="bg-desaturated_blue00 rounded-full w-[26px] h-[26px]"></div><% end %>
+          </button>
         <%= if todo.is_completed == false do %>
        <%!-- <%= if String.downcase(todo.is_completed) == "incomplete" do %> --%>
-           <button class="completed_todo">
-            <div class="bg-desaturated_blue00 rounded-full w-[26px] h-[26px]"></div>
-          </button>
            <h1 class="text-light_grayish_blue text-lg "><%= todo.todo %></h1>
         <% else %>
-          <div class="completed_todo"></div>
-          <h1 class="text-gb_001 text-lg line-through"><%= todo.todo %></h1>
+          <s class="text-gb_001 text-lg line-through"><%= todo.todo %></s>
         <% end %>
-
-          <div class="ml-auto">X</div>
+          <button
+            class="ml-auto"
+            phx-click="delete_todo"
+            phx-value-id={todo.id}>
+            X
+          </button>
         </li>
         <% end %>
         </ul>
@@ -97,7 +129,7 @@ end
         <button class={"hover:text-white" <> if @show_completed, do: " text-brightBlue", else: ""} phx-click="show_completed">Active</button>
         <button class={"hover:text-white" <> if @show_incomplete, do: " text-brightBlue", else: ""} phx-click="show_incomplete">Completed</button>
         </div>
-          <button class="hover:text-white">Clear completed</button>
+          <button class="hover:text-white" phx-click="clear_completed">Clear completed</button>
        </div>
       </section>
       </div>
